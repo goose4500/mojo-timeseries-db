@@ -24,14 +24,14 @@ Now write a new value at timestamp 20 and query again. This is an **upsert**:
 insert when absent, replace when present. The journal retains both writes, but the
 current index exposes only the latest value at that timestamp.
 
-**Find it:** `Series.put` and `Series.lower_bound` in `engine.mojo`.
+**Find it:** `Series.put` and `Series.lower_bound` in `src/engine.mojo`.
 
 **Experiment:** insert time 15 after time 50. Why are results still sorted?
 Which part of insertion must move data, and why is that expensive at large scale?
 
 ## 2. Name the capability: a trait
 
-Open `aggregations.mojo`:
+Open `src/aggregations.mojo`:
 
 ```mojo
 trait Aggregator(Defaultable, Deinitable):
@@ -103,7 +103,7 @@ includes an isolated compile-fail test for this, without modifying your files.
 
 ## 4. The leverage: one generic algorithm, many concrete types
 
-Find `Series.aggregate` in `engine.mojo`. Its core is:
+Find `Series.aggregate` in `src/engine.mojo`. Its core is:
 
 ```mojo
 var accumulator = A()
@@ -134,7 +134,7 @@ table is not required by this design. This enables optimization, but does not by
 itself prove a speedup—measurement comes later.
 
 **Find the boundary:** the CLI receives a runtime string such as `"mean"`.
-In `tsdb.mojo`, ordinary branches choose among already compiled
+In `src/tsdb.mojo`, ordinary branches choose among already compiled
 `dispatch[Mean]`, `dispatch[Sum]`, and other instantiations. Arbitrary new types
 cannot be loaded merely by writing a new string on the command line.
 
@@ -171,10 +171,10 @@ Make an `Above22(Aggregator)` that counts readings strictly greater than 22:
 5. Add a native test; the answer for those readings should be `1.0`.
 6. Try it with downsampling. The two buckets should yield `0.0` and `1.0`.
 
-You should not have to modify `engine.mojo` or `storage.mojo`.
+You should not have to modify `src/engine.mojo` or `src/storage.mojo`.
 
 To expose it through the CLI, add its import and an operation-name branch in
-`tsdb.mojo`, following the existing `Count` branch. This is separate from making
+`src/tsdb.mojo`, following the existing `Count` branch. This is separate from making
 it work with the generic engine.
 
 **Next experiment:** make the threshold a compile-time parameter of your struct,

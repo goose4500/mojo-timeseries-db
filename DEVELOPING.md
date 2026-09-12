@@ -55,6 +55,18 @@ Compiler defaults target the host CPU. A lockfile does not make binaries portabl
 across arbitrary CPUs or operating systems; build on the target platform or
 choose and test an explicit deployment target before distributing executables.
 
+## Source layout
+
+- `src/`: database modules and CLI entry point.
+- `tests/`: native Mojo tests and Python black-box tests.
+- `benchmarks/`: native performance workloads.
+- `examples/`: custom aggregator and sample data.
+- `scripts/`: demo and benchmark runners.
+
+The build passes `-I src` to Mojo so tests, benchmarks, and examples can import
+shared database modules. When adding a Mojo file, update `mojo_sources` in
+`build.zig` so formatting and compilation cache invalidation include it.
+
 ## Tests and formatting
 
 ```sh

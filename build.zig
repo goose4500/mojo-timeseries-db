@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const mojo_sources = [_][]const u8{
-    "aggregations.mojo", "engine.mojo",     "storage.mojo",                     "tsdb.mojo",
-    "tests.mojo",        "benchmarks.mojo", "examples/custom_aggregation.mojo",
+    "src/aggregations.mojo", "src/engine.mojo",            "src/storage.mojo",                 "src/tsdb.mojo",
+    "tests/tests.mojo",      "benchmarks/benchmarks.mojo", "examples/custom_aggregation.mojo",
 };
 
 // Zig coordinates external commands; Mojo remains the only database compiler.
@@ -10,7 +10,7 @@ const mojo_sources = [_][]const u8{
 fn compile(b: *std.Build, source: []const u8, output: []const u8, flags: []const []const u8) std.Build.LazyPath {
     const cmd = b.addSystemCommand(&.{ "uv", "run", "--locked", "mojo", "build" });
     cmd.addArgs(flags);
-    cmd.addArgs(&.{ "-I", "." });
+    cmd.addArgs(&.{ "-I", "src" });
     cmd.addFileArg(b.path(source));
     cmd.addArg("-o");
     const result = cmd.addOutputFileArg(output);
@@ -34,15 +34,15 @@ pub fn build(b: *std.Build) void {
     version.step.dependOn(&sync.step);
     b.step("setup", "Install the locked project-local Mojo toolchain").dependOn(&version.step);
 
-    const cli = compile(b, "tsdb.mojo", "tsdb", &.{"-O3"});
+    const cli = compile(b, "src/tsdb.mojo", "tsdb", &.{"-O3"});
     const install_cli = b.addInstallFileWithDir(cli, .bin, "tsdb");
     b.getInstallStep().dependOn(&install_cli.step);
 
-    const tests = compile(b, "tests.mojo", "tests", &.{"-O3"});
+    const tests = compile(b, "tests/tests.mojo", "tests", &.{"-O3"});
     const native = runNative(b, tests);
     b.step("test-native", "Run native TestSuite tests; forward flags after --").dependOn(&native.step);
 
-    const benchmarks = compile(b, "benchmarks.mojo", "benchmarks", &.{"-O3"});
+    const benchmarks = compile(b, "benchmarks/benchmarks.mojo", "benchmarks", &.{"-O3"});
     const install_benchmarks = b.addInstallFileWithDir(benchmarks, .bin, "benchmarks");
     const python_tests = b.addSystemCommand(&.{ "uv", "run", "--locked", "python", "-m", "unittest", "discover", "-s", "tests", "-v" });
     python_tests.setEnvironmentVariable("TSDB_BINARY", b.getInstallPath(.bin, "tsdb"));
@@ -51,7 +51,7 @@ pub fn build(b: *std.Build) void {
     python_tests.step.dependOn(&install_benchmarks.step);
     python_tests.step.dependOn(&native.step);
 
-    const example = b.addSystemCommand(&.{ "uv", "run", "--locked", "mojo", "-I", ".", "examples/custom_aggregation.mojo" });
+    const example = b.addSystemCommand(&.{ "uv", "run", "--locked", "mojo", "-I", "src", "examples/custom_aggregation.mojo" });
     b.step("example", "Run the independent Spread aggregator").dependOn(&example.step);
     const test_step = b.step("test", "Run native, black-box, benchmark smoke tests, and example");
     test_step.dependOn(&python_tests.step);
@@ -69,13 +69,13 @@ pub fn build(b: *std.Build) void {
     format_step.dependOn(&format.step);
     format_step.dependOn(&zig_format.step);
 
-    const debug = compile(b, "tsdb.mojo", "tsdb-debug", &.{ "-O0", "-g" });
+    const debug = compile(b, "src/tsdb.mojo", "tsdb-debug", &.{ "-O0", "-g" });
     const install_debug = b.addInstallFileWithDir(debug, .bin, "tsdb-debug");
     b.step("debug", "Build the CLI with -O0 and full debug information").dependOn(&install_debug.step);
 
     // Mojo 1.0 TestSuite reproduces a zero-size-access ASan report at -O0 on
     // our ARM64 host. -O1 passes without disabling sanitizer instrumentation.
-    const asan = compile(b, "tests.mojo", "tests-asan", &.{ "-O1", "-g", "--sanitize", "address" });
+    const asan = compile(b, "tests/tests.mojo", "tests-asan", &.{ "-O1", "-g", "--sanitize", "address" });
     const sanitizer_tests = runNative(b, asan);
     b.step("sanitize", "Run native tests under AddressSanitizer (-O1)").dependOn(&sanitizer_tests.step);
 

@@ -28,7 +28,7 @@ Python minor version; uv manages the local `.venv`. All Mojo/Python invocations 
 `uv run --locked`, including the Python tests' compiler subprocesses. There are
 no third-party database libraries or Python dependencies in the database runtime.
 To compile directly without the Zig build runner:
-`mkdir -p zig-out/bin && uv run --locked mojo build tsdb.mojo -o zig-out/bin/tsdb`.
+`mkdir -p zig-out/bin && uv run --locked mojo build -I src src/tsdb.mojo -o zig-out/bin/tsdb`.
 
 See **[DEVELOPING.md](DEVELOPING.md)** for filtered tests, debugging, sanitizers,
 assembly/IR inspection, benchmarks, and toolchain updates.
@@ -127,10 +127,10 @@ appending can leave a successfully written prefix.
 ## How it works
 
 ```text
-CLI (tsdb.mojo)
-  └─ Database (storage.mojo)
+CLI (src/tsdb.mojo)
+  └─ Database (src/storage.mojo)
        ├─ versioned append-only journal: source of truth
-       └─ Engine (engine.mojo)
+       └─ Engine (src/engine.mojo)
             ├─ Dict[String, Int]: series name → position
             └─ List[Series]
                  ├─ List[Int]: sorted timestamps
@@ -168,15 +168,15 @@ Import and replay also temporarily hold parsed records in memory.
 
 | File | Purpose |
 | --- | --- |
-| `aggregations.mojo` | Trait contract and five concrete accumulator types |
-| `engine.mojo` | Columnar storage, binary search, upserts, generic queries |
-| `storage.mojo` | Journal creation/replay, strict record parsing, persistent writes |
-| `tsdb.mojo` | CLI and runtime-name → compile-time-type dispatch |
+| `src/aggregations.mojo` | Trait contract and five concrete accumulator types |
+| `src/engine.mojo` | Columnar storage, binary search, upserts, generic queries |
+| `src/storage.mojo` | Journal creation/replay, strict record parsing, persistent writes |
+| `src/tsdb.mojo` | CLI and runtime-name → compile-time-type dispatch |
 | `examples/custom_aggregation.mojo` | Add Spread without touching the engine |
-| `tests.mojo` | Native TestSuite discovery, reference-model checks, custom aggregator |
+| `tests/tests.mojo` | Native TestSuite discovery, reference-model checks, custom aggregator |
 | `tests/test_cli.py` | Separate-process persistence, invalid inputs, compiler rejection |
 | `LEARNING.md` | Hands-on trait and ownership labs |
-| `benchmarks.mojo` | Replay, insertion, aggregation, and downsampling baselines |
+| `benchmarks/benchmarks.mojo` | Replay, insertion, aggregation, and downsampling baselines |
 | `tests/test_benchmarks.py` | Benchmark harness correctness and file-safety smoke tests |
 | `DEVELOPING.md` | Locked toolchain, debugging, sanitizers, benchmark methodology |
 | `build.zig` | Build graph, cached Mojo compilation, and development tasks |

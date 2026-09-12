@@ -177,7 +177,7 @@ class DatabaseCLI(unittest.TestCase):
             "def main():\n    pass\n"
         )
         result = subprocess.run(
-            ["mojo", "build", "-I", str(ROOT), str(source), "-o", str(self.path.parent / "broken")],
+            ["mojo", "build", "-I", str(ROOT / "src"), str(source), "-o", str(self.path.parent / "broken")],
             text=True, capture_output=True, timeout=120,
         )
         self.assertNotEqual(result.returncode, 0)
