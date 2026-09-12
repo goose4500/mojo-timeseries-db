@@ -1,0 +1,6 @@
+/build/
+/.pi/
+*.tsdb
+__pycache__/
+*.pyc
+.mojo_cache/
