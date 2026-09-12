@@ -1,6 +1,7 @@
 """Black-box tests of the compiled Mojo executable; no Python database code."""
 
 import math
+import os
 from pathlib import Path
 import random
 import struct
@@ -9,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-BINARY = ROOT / "build" / "tsdb"
+BINARY = Path(os.environ.get("TSDB_BINARY", ROOT / "zig-out" / "bin" / "tsdb"))
 
 
 class DatabaseCLI(unittest.TestCase):

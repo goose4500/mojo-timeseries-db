@@ -1,5 +1,8 @@
 /build/
+/.zig-cache/
+/zig-out/
 /.pi/
+/.venv/
 *.tsdb
 __pycache__/
 *.pyc

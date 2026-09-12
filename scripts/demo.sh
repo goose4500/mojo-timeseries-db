@@ -8,7 +8,7 @@ run() {
     printf '\n> tsdb'
     printf ' %q' "$@"
     printf '\n'
-    ./build/tsdb "$@"
+    "${TSDB_BINARY:-./zig-out/bin/tsdb}" "$@"
 }
 run init "$db"
 run import "$db" examples/greenhouse.tsv

@@ -1,4 +1,4 @@
-"""Run with `mojo -I . examples/custom_aggregation.mojo`."""
+"""Run with `zig build example`."""
 
 from aggregations import Aggregator, Minimum, Maximum
 from engine import Engine

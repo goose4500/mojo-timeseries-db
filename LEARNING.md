@@ -3,7 +3,7 @@
 Our project is a greenhouse monitor: temperature and humidity readings arrive
 over time. We need to save them, query an interval, and summarize what happened.
 
-Start with `make demo`. Then work through these labs in order. You do not need to
+Start with `zig build demo`. Then work through these labs in order. You do not need to
 understand every file before changing something useful.
 
 ## 1. Understand the actual data first
@@ -14,7 +14,7 @@ was 21 degrees.” The database does not encode the unit; our application suppli
 Create the persistent example using the commands in `README.md`. Try:
 
 ```sh
-./build/tsdb range greenhouse.tsdb greenhouse.temperature 10 30
+./zig-out/bin/tsdb range greenhouse.tsdb greenhouse.temperature 10 30
 ```
 
 You get timestamps 10 and 20, **not** 30: `[10, 30)` includes its left endpoint
@@ -96,9 +96,9 @@ This is capability sharing, not a base-class implementation hierarchy.
 Compare `Mean`: it stores both a total and a count. Same capability, different
 state and algorithm. The query loop does not need to know that difference.
 
-**Experiment:** temporarily rename `Sum.finish` to `answer`, then run `make`.
+**Experiment:** temporarily rename `Sum.finish` to `answer`, then run `zig build`.
 Read the compiler error and restore the method. You have just tested a contract,
-not encountered a missing method during a live database query. `make test` also
+not encountered a missing method during a live database query. `zig build test` also
 includes an isolated compile-fail test for this, without modifying your files.
 
 ## 4. The leverage: one generic algorithm, many concrete types
@@ -141,7 +141,7 @@ cannot be loaded merely by writing a new string on the command line.
 ## 5. Add a useful capability implementation: temperature swing
 
 ```sh
-make example
+zig build example
 ```
 
 Open `examples/custom_aggregation.mojo`. `Spread` calculates maximum minus
@@ -227,7 +227,7 @@ Useful next projects, each with a concrete reason:
 7. **SIMD scans.** Benchmark a specialized contiguous-column sum against the
    scalar generic loop. Distinguish measured vectorization from assumed speed.
 
-Before optimizing, define correctness. `make test` already checks shuffled
+Before optimizing, define correctness. `zig build test` already checks shuffled
 upserts against a dense reference model, persistence across processes, exact
 sampled float round trips, empty queries, bucket boundaries, corrupt journals,
 and an independently defined Aggregator.

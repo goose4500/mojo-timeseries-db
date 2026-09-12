@@ -10,29 +10,48 @@ Tested on **Mojo 1.0.0 (`ed45d567`), 64-bit Linux**.
 ## Start here
 
 ```sh
-make           # Compile a native executable into build/tsdb
-make demo      # Run a greenhouse-sensor scenario in a temporary database
-make test      # Native tests, CLI/persistence tests, and custom-trait example
-make example   # Run the independent Spread aggregator
+zig build setup    # Install the locked Mojo 1.0.0 toolchain using uv
+zig build          # Compile a native executable into zig-out/bin/tsdb
+zig build demo     # Run a greenhouse-sensor scenario in a temporary database
+zig build test     # Native tests, CLI/persistence tests, and custom-trait example
+zig build example  # Run the independent Spread aggregator
 ```
 
 Then open **[LEARNING.md](LEARNING.md)**. It connects the terminology to the
 actual code and walks you through extending the database yourself.
 
-Requires `mojo` and `make`; tests also require `python3`. No third-party packages.
-To build without Make: `mkdir -p build && mojo build tsdb.mojo -o build/tsdb`.
+Requires [Zig 0.16.0](https://ziglang.org/download/) and
+[uv](https://docs.astral.sh/uv/getting-started/installation/).
+Zig orchestrates the build; Mojo compiles all database code.
+`pyproject.toml`, `uv.lock`, and `.python-version` pin the Mojo dependency and
+Python minor version; uv manages the local `.venv`. All Mojo/Python invocations use
+`uv run --locked`, including the Python tests' compiler subprocesses. There are
+no third-party database libraries or Python dependencies in the database runtime.
+To compile directly without the Zig build runner:
+`mkdir -p zig-out/bin && uv run --locked mojo build tsdb.mojo -o zig-out/bin/tsdb`.
+
+See **[DEVELOPING.md](DEVELOPING.md)** for filtered tests, debugging, sanitizers,
+assembly/IR inspection, benchmarks, and toolchain updates.
+
+```sh
+zig build test-native -- --only test_buckets
+zig build debug      # Build zig-out/bin/tsdb-debug with -O0 -g
+zig build sanitize   # Run native tests with AddressSanitizer (-O1 -g)
+zig build inspect    # Emit optimized assembly and unoptimized LLVM IR for Spread
+zig build bench      # Five separate baseline workloads, 10,000 points each
+```
 
 ## Create a database you can keep
 
 Run these commands from this project directory, using a fresh database path:
 
 ```sh
-./build/tsdb init greenhouse.tsdb
-./build/tsdb import greenhouse.tsdb examples/greenhouse.tsv
-./build/tsdb series greenhouse.tsdb
-./build/tsdb range greenhouse.tsdb greenhouse.temperature 0 60
-./build/tsdb aggregate greenhouse.tsdb greenhouse.temperature 0 60 mean
-./build/tsdb downsample greenhouse.tsdb greenhouse.temperature 0 60 20 mean
+./zig-out/bin/tsdb init greenhouse.tsdb
+./zig-out/bin/tsdb import greenhouse.tsdb examples/greenhouse.tsv
+./zig-out/bin/tsdb series greenhouse.tsdb
+./zig-out/bin/tsdb range greenhouse.tsdb greenhouse.temperature 0 60
+./zig-out/bin/tsdb aggregate greenhouse.tsdb greenhouse.temperature 0 60 mean
+./zig-out/bin/tsdb downsample greenhouse.tsdb greenhouse.temperature 0 60 20 mean
 ```
 
 The mean is `21.0`. The downsample output is:
@@ -47,14 +66,14 @@ bucket_start	count	value
 Add a late reading, then correct an existing reading:
 
 ```sh
-./build/tsdb put greenhouse.tsdb greenhouse.temperature 15 22
-./build/tsdb put greenhouse.tsdb greenhouse.temperature 30 24
-./build/tsdb range greenhouse.tsdb greenhouse.temperature 10 40
+./zig-out/bin/tsdb put greenhouse.tsdb greenhouse.temperature 15 22
+./zig-out/bin/tsdb put greenhouse.tsdb greenhouse.temperature 30 24
+./zig-out/bin/tsdb range greenhouse.tsdb greenhouse.temperature 10 40
 ```
 
 Every command is a separate process: these queries exercise persistence and
 replay, not just an object left in memory. `init` refuses an existing path;
-it does not reset a database. `make demo` uses a temporary file and removes it.
+it does not reset a database. `zig build demo` uses a temporary file and removes it.
 
 ## Commands
 
@@ -69,7 +88,7 @@ downsample PATH SERIES START END WIDTH OP
 ```
 
 `OP` is `sum`, `mean`, `min`, `max`, or `count`. Output is tab-separated.
-`./build/tsdb --help` shows the same command reference. Errors exit nonzero.
+`./zig-out/bin/tsdb --help` shows the same command reference. Errors exit nonzero.
 
 ### Exact data semantics
 
@@ -154,9 +173,14 @@ Import and replay also temporarily hold parsed records in memory.
 | `storage.mojo` | Journal creation/replay, strict record parsing, persistent writes |
 | `tsdb.mojo` | CLI and runtime-name → compile-time-type dispatch |
 | `examples/custom_aggregation.mojo` | Add Spread without touching the engine |
-| `tests.mojo` | Native assertions, reference-model checks, custom aggregator |
+| `tests.mojo` | Native TestSuite discovery, reference-model checks, custom aggregator |
 | `tests/test_cli.py` | Separate-process persistence, invalid inputs, compiler rejection |
 | `LEARNING.md` | Hands-on trait and ownership labs |
+| `benchmarks.mojo` | Replay, insertion, aggregation, and downsampling baselines |
+| `tests/test_benchmarks.py` | Benchmark harness correctness and file-safety smoke tests |
+| `DEVELOPING.md` | Locked toolchain, debugging, sanitizers, benchmark methodology |
+| `build.zig` | Build graph, cached Mojo compilation, and development tasks |
+| `.github/workflows/ci.yml` | Linux x86-64 and ARM64 checks using the same Zig build steps |
 
 ## Deliberate boundaries
 
@@ -176,8 +200,9 @@ This is a **learning database, not a production database server**.
 - Numeric aggregates use ordinary Float64 arithmetic. Rounding, cancellation,
   and aggregate overflow remain possible even with finite inputs. Means are
   sample-weighted, not time-weighted. No compensated sum or financial precision.
-- No explicit SIMD, GPU acceleration, or performance claims yet. The layout and
-  generic code give us a starting point for measuring those improvements later.
+- No explicit SIMD or GPU acceleration. Baseline benchmarks now separate replay,
+  insertion, and in-memory queries; they do not establish a speedup over other
+  languages or databases.
 
 Some installations print a Crashpad initialization warning when invoking the Mojo
 compiler. On the tested machine it did not prevent compilation or passing tests.

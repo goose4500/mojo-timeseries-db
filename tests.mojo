@@ -1,6 +1,6 @@
 """Native Mojo tests, including a new trait implementation unknown to engine."""
 
-from std.testing import assert_equal, assert_true
+from std.testing import TestSuite, assert_equal, assert_raises
 from aggregations import Aggregator, Sum, Mean, Minimum, Maximum, Count
 from engine import Engine, validate_point, validate_range, MAX_TIME_BOUND
 from storage import parse_records, parse_timestamp
@@ -41,10 +41,6 @@ def test_ordering_and_upserts() raises:
     assert_equal(len(db.query("sensor.room", 20, 20)), 0)
     assert_equal(len(db.query("missing", 0, 40)), 0)
     assert_equal(db.query("other", 0, 40)[0].value, Float64(99))
-    print(
-        "PASS ordering, duplicate replacement, series isolation, half-open"
-        " ranges"
-    )
 
 
 def test_aggregators() raises:
@@ -66,10 +62,6 @@ def test_aggregators() raises:
     assert_equal(db.aggregate[Spread]("cpu", 10, 20).value, Float64(0))
     assert_equal(db.aggregate[Maximum]("cpu", 0, 1).value, Float64(-5))
     assert_equal(db.aggregate[Minimum]("cpu", 20, 21).value, Float64(9))
-    print(
-        "PASS five built-ins, empty results, independently defined Spread trait"
-        " implementation"
-    )
 
 
 def test_buckets() raises:
@@ -99,40 +91,20 @@ def test_buckets() raises:
     assert_equal(len(edge), 1)
     assert_equal(edge[0].start, MAX_TIME_BOUND - 5)
     assert_equal(edge[0].value, Float64(7))
-    print(
-        "PASS bucket boundaries, gaps, partial buckets, custom aggregator,"
-        " overflow edge"
-    )
 
 
 def test_validation() raises:
     var bad_names: List[String] = ["", "a b", "a\tb", "a\nb", "café"]
     for name in bad_names:
-        var failed = False
-        try:
+        with assert_raises():
             validate_point(name, 0, 1)
-        except:
-            failed = True
-        assert_true(failed)
-    var failed = False
-    try:
+    with assert_raises(contains="timestamp"):
         validate_point("ok", -1, 1)
-    except:
-        failed = True
-    assert_true(failed)
-    failed = False
-    try:
+    with assert_raises():
         validate_range(5, 4)
-    except:
-        failed = True
-    assert_true(failed)
     var db = Engine()
-    failed = False
-    try:
+    with assert_raises():
         _ = db.downsample[Sum]("missing", 0, 10, 0)
-    except:
-        failed = True
-    assert_true(failed)
     assert_equal(parse_timestamp("0"), 0)
     assert_equal(parse_timestamp("9223372036854775807"), MAX_TIME_BOUND)
     var invalid: List[String] = [
@@ -145,13 +117,8 @@ def test_validation() raises:
         "9223372036854775808",
     ]
     for text in invalid:
-        failed = False
-        try:
+        with assert_raises():
             _ = parse_timestamp(text)
-        except:
-            failed = True
-        assert_true(failed)
-    print("PASS name, timestamp, range, width, and integer-overflow validation")
 
 
 def test_record_parser() raises:
@@ -172,13 +139,8 @@ def test_record_parser() raises:
         "cpu\t0\t1\textra\n",
     ]
     for text in bad:
-        var failed = False
-        try:
+        with assert_raises():
             _ = parse_records(text)
-        except:
-            failed = True
-        assert_true(failed)
-    print("PASS journal/TSV parsing and corrupt-record rejection")
 
 
 def test_reference_model() raises:
@@ -230,17 +192,7 @@ def test_reference_model() raises:
                 bucket_sum += bucket.value
             assert_equal(bucket_count, count)
             assert_equal(bucket_sum, total)
-    print(
-        "PASS 1,000 deterministic upserts and reference-model range/bucket"
-        " checks"
-    )
 
 
 def main() raises:
-    test_ordering_and_upserts()
-    test_aggregators()
-    test_buckets()
-    test_validation()
-    test_record_parser()
-    test_reference_model()
-    print("All native Mojo tests passed.")
+    TestSuite.discover_tests[__functions_in_module()]().run()
